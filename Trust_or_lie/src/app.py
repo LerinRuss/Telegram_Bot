@@ -77,6 +77,9 @@ def connect(update, context):
     callback_query.answer()
 
     user = callback_query.from_user.username
+
+    if user is None:
+        user = callback_query.from_user.full_name
     if user in game.room:
         return
 
