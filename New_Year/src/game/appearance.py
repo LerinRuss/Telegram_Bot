@@ -10,7 +10,7 @@ class AppearanceState(enum.Enum):
     UP = 4
 
 
-class AppearanceControl:
+class _AppearanceControl:
     def __init__(self, current_state: AppearanceState):
         self._current_state = current_state
 
@@ -53,7 +53,7 @@ class AppearanceControl:
         return res
 
 
-def try_raise(essence: AppearanceControl) -> None:
+def try_raise(essence: _AppearanceControl) -> None:
     if essence._current_state is AppearanceState.LOWERED or essence._current_state is AppearanceState.DOWN:
 
         essence._raise_please()
@@ -61,7 +61,7 @@ def try_raise(essence: AppearanceControl) -> None:
         essence._lower()
 
 
-def try_lower(essence: AppearanceControl) -> None:
+def try_lower(essence: _AppearanceControl) -> None:
     if essence._current_state is AppearanceState.RAISED or essence._current_state is AppearanceState.UP:
 
         essence._lower()
@@ -70,7 +70,7 @@ def try_lower(essence: AppearanceControl) -> None:
 
 
 class _SimpleMediator:
-    def __init__(self, first_appearance: AppearanceControl, second_appearance: AppearanceControl):
+    def __init__(self, first_appearance: _AppearanceControl, second_appearance: _AppearanceControl):
         self._first_appearance = first_appearance
         self._second_appearance = second_appearance
 
@@ -108,7 +108,7 @@ class AppearanceObject:
 
 
 class GameSource:
-    def __init__(self, resource: Union[any, None], appearance: AppearanceControl):
+    def __init__(self, resource: Union[any, None], appearance: _AppearanceControl):
         if resource is not None:
             assert appearance._current_state is AppearanceState.UP
         else:
@@ -156,7 +156,7 @@ class SourceMediator:
         self._first_source = first_source
         self._second_source = second_source
 
-        self._second_source._mediator = self
+        self._first_source._mediator = self
         self._second_source._mediator = self
 
     def _spread_resource(self, source: GameSource, resource: any):
@@ -174,8 +174,8 @@ class SourceMediator:
 
 def appearance_pair_factory(first_essence_init_state: AppearanceState, second_essence_init_state: AppearanceState) -> \
         (AppearanceObject, AppearanceObject):
-    first_appearance_control = AppearanceControl(first_essence_init_state)
-    second_appearance_control = AppearanceControl(second_essence_init_state)
+    first_appearance_control = _AppearanceControl(first_essence_init_state)
+    second_appearance_control = _AppearanceControl(second_essence_init_state)
 
     mediator = _SimpleMediator(first_appearance_control, second_appearance_control)
 
@@ -194,8 +194,8 @@ def appearance_pair_factory(first_essence_init_state: AppearanceState, second_es
 def source_pair_factory(first_source_state: AppearanceState, second_source_state: AppearanceState, resource=None):
     assert first_source_state == second_source_state
 
-    first_appearance_control = AppearanceControl(first_source_state)
-    second_appearance_control = AppearanceControl(second_source_state)
+    first_appearance_control = _AppearanceControl(first_source_state)
+    second_appearance_control = _AppearanceControl(second_source_state)
 
     first_game_source = GameSource(resource, first_appearance_control)
     second_game_source = GameSource(resource, second_appearance_control)
