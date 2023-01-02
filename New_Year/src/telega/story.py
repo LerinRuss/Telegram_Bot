@@ -1,4 +1,5 @@
 from typing import IO, Any
+from utils import LoadCache
 
 
 class ImageSource:
@@ -13,7 +14,7 @@ class Scene:
         self.caption = caption
 
 
-introduction = Scene(ImageSource(open('res/Introduction.png', 'rb'), 'Introduction'), 'Introduction caption.')
-story = [Scene(ImageSource(open('res/Scene_1.png', 'rb'), 'Scene_1'), 'Scene 1 caption.'),
-         Scene(ImageSource(open('res/Scene_2.png', 'rb'), 'Scene_2'), 'Scene 2 caption.'),
-         Scene(ImageSource(open('res/Scene_3.png', 'rb'), 'Scene_3'), 'Scene 3 caption.')]
+introduction = Scene(ImageSource(LoadCache.load('res/Introduction.png'), 'Introduction'), 'Introduction caption.')
+story = [Scene(ImageSource(LoadCache.load('res/Scene_1.png'), 'Scene_1'), 'Scene 1 caption.'),
+         Scene(ImageSource(LoadCache.load('res/Scene_2.png'), 'Scene_2'), 'Scene 2 caption.'),
+         Scene(ImageSource(LoadCache.load('res/Scene_3.png'), 'Scene_3'), 'Scene 3 caption.')]
