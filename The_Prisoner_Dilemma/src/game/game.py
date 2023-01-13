@@ -1,6 +1,6 @@
 from statemachine import StateMachine, State
 from enum import Enum
-
+from typing import Dict, List, Tuple
 import random
 
 
@@ -11,8 +11,8 @@ class TurnResult(Enum):
 
 
 class GameWord(Enum):
-    believe = 1
-    lie = 2
+    GOOD = 1
+    BAD = 2
 
 
 class Game(StateMachine):
@@ -26,8 +26,8 @@ class Game(StateMachine):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.room = dict()
-        self.pairs = list()
+        self.room: Dict[str, int] = dict()
+        self.pairs: List = list()
         self.curr = None
 
     def create_room(self):
@@ -35,12 +35,12 @@ class Game(StateMachine):
         self._create()
 
     def play(self):
-        self.pairs = pair_up(list(self.room))
+        self.pairs: List[Tuple[Player, Player]] = pair_up(list(self.room))
         random.shuffle(self.pairs)
-        self.curr = self.pairs.pop()
+        self.curr: Tuple[Player, Player] = self.pairs.pop()
         self._play()
 
-    def join(self, player_name):
+    def join(self, player_name: str):
         self.room[player_name] = 0
 
     def stop(self):
@@ -75,20 +75,22 @@ class Game(StateMachine):
         return TurnResult.next_turn
 
     def score_points(self, first, second):
-        if first.answer == GameWord.lie and second.answer == GameWord.lie:
+        if first.answer == GameWord.BAD and second.answer == GameWord.BAD:
+            self.room[first.name] = self.room[first.name] + 24
+            self.room[second.name] = self.room[second.name] + 24
             return
 
-        if first.answer == GameWord.believe and second.answer == GameWord.believe:
-            self.room[first.name] = self.room[first.name] + 1
-            self.room[second.name] = self.room[second.name] + 1
+        if first.answer == GameWord.GOOD and second.answer == GameWord.GOOD:
+            self.room[first.name] = self.room[first.name] + 6
+            self.room[second.name] = self.room[second.name] + 6
 
             return
 
-        if first.answer == GameWord.lie:
-            self.room[first.name] = self.room[first.name] + 2
+        if first.answer == GameWord.GOOD:
+            self.room[first.name] = self.room[first.name] + 120
 
-        if second.answer == GameWord.lie:
-            self.room[second.name] = self.room[second.name] + 2
+        if second.answer == GameWord.GOOD:
+            self.room[second.name] = self.room[second.name] + 120
 
     def build_stats(self):
         msg = ''
@@ -107,9 +109,9 @@ class Player:
         return self.name
 
 
-def pair_up(players_arg):
-    players = players_arg.copy()
-    pairs = list()
+def pair_up(players_arg: List[str]):
+    players: List[str] = players_arg.copy()
+    pairs: List[Tuple[Player, Player]] = list()
     while players:
         last = players.pop()
 

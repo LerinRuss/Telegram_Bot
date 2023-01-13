@@ -1,37 +1,33 @@
-from telegram.ext import Updater, CommandHandler, CallbackQueryHandler
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
+from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery, ReplyKeyboardRemove, User
+from telegram.update import Update
 from game.game import Game, TurnResult, GameWord
 from localization import *
 
 import logging
 import os
 
-START_COMMAND = 'start'
-CREATE_COMMAND = 'create'
-STOP_COMMAND = 'force_stop'
 
 REGEX_CONNECT = 'connect'
 REGEX_PLAY = 'play'
 
-REGEX_BELIEVE = 'believe'
-REGEX_LIE = 'lie'
+REGEX_GOOD = 'keep_silent'
+REGEX_BAD = 'testify'
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 token = os.environ['TELEGRAM_BOT_TOKEN']
-game = Game()
+game: Game = Game()
 
 
-def start(update, context):
-    keyboard_buttons = [[KeyboardButton(f'/{CREATE_COMMAND}')],
-                        [KeyboardButton(f'/{STOP_COMMAND}')]]
-    context.bot.send_message(chat_id=update.effective_chat.id,
-                             text=START_TEXT,
-                             reply_markup=ReplyKeyboardMarkup(keyboard_buttons,
-                                                              resize_keyboard=True,
-                                                              one_time_keyboard=True))
+def remove_keyboard(update: Update, context: CallbackContext):
+    context.bot.send_message(chat_id=update.effective_chat.id, reply_markup=ReplyKeyboardRemove(selective=True))
 
 
-def play(update, context):
+def start(update: Update, context: CallbackContext):
+    context.bot.send_message(chat_id=update.effective_chat.id, text=START_TEXT)
+
+
+def play(update: Update, context: CallbackContext):
     if not game.is__created:
         context.bot.send_message(chat_id=update.effective_chat.id, text=CREATE_ROOM_WARN_TEXT)
         return
@@ -45,8 +41,8 @@ def play(update, context):
     game.play()
 
     players_text = ', '.join(list(game.room))
-    keyboard_buttons = [[InlineKeyboardButton(BELIEVE_BUTTON_TEXT, callback_data=REGEX_BELIEVE)],
-                        [InlineKeyboardButton(LIE_BUTTON_TEXT, callback_data=REGEX_LIE)]]
+    keyboard_buttons = [[InlineKeyboardButton(BELIEVE_BUTTON_TEXT, callback_data=REGEX_GOOD)],
+                        [InlineKeyboardButton(LIE_BUTTON_TEXT, callback_data=REGEX_BAD)]]
 
     callback_query.edit_message_text(
         PLAY_TEXT % {
@@ -55,7 +51,7 @@ def play(update, context):
         reply_markup=InlineKeyboardMarkup(keyboard_buttons))
 
 
-def create(update, context):
+def create(update: Update, context: CallbackContext):
     if not game.is__idle:
         context.bot.send_message(chat_id=update.effective_chat.id, text=CREATE_ROOM_ERROR_TEXT)
         return
@@ -68,7 +64,16 @@ def create(update, context):
     context.bot.send_message(chat_id=update.effective_chat.id, text=CREATE_ROOM_TEXT, reply_markup=keyboard)
 
 
-def connect(update, context):
+def get_user_identifier(user: User):
+    username: str = user.username
+
+    if username is None:
+        return user.full_name
+
+    return username
+
+
+def connect(update: Update, context: CallbackContext):
     if not game.is__created:
         context.bot.send_message(chat_id=update.effective_chat.id, text=CONNECT_WARN_TEXT)
         return
@@ -76,32 +81,30 @@ def connect(update, context):
     callback_query = update.callback_query
     callback_query.answer()
 
-    user = callback_query.from_user.username
+    user_id = get_user_identifier(callback_query.from_user)
 
-    if user is None:
-        user = callback_query.from_user.full_name
-    if user in game.room:
+    if user_id in game.room:
         return
 
-    game.join(user)
+    game.join(user_id)
     callback_query.edit_message_text(
         CREATE_ROOM_TEXT + '\n' + CONNECTION_TEXT % {"players": ', '.join(list(game.room))},
         reply_markup=callback_query.message.reply_markup)
 
 
-def believe(update, context):
-    say_answer(update, context, GameWord.believe)
+def good(update: Update, context: CallbackContext):
+    say_answer(update, context, GameWord.GOOD)
 
 
-def lie(update, context):
-    say_answer(update, context, GameWord.lie)
+def bad(update: Update, context: CallbackContext):
+    say_answer(update, context, GameWord.BAD)
 
 
-def say_answer(update, context, answer):
-    callback_query = update.callback_query
+def say_answer(update: Update, context: CallbackContext, answer: GameWord):
+    callback_query: CallbackQuery = update.callback_query
     callback_query.answer()
-    user_name = callback_query.from_user.username
-    player = game.get_current_by_name(user_name)
+    user_id = get_user_identifier(callback_query.from_user)
+    player = game.get_current_by_name(user_id)
 
     if player is None or player.answer is not None:
         return
@@ -111,7 +114,7 @@ def say_answer(update, context, answer):
 
     if turn_res == TurnResult.keep_turn:
         callback_query.edit_message_text(f'{update.callback_query.message.text}\n'
-                                         + ANSWERED_TEXT % {'player': user_name},
+                                         + ANSWERED_TEXT % {'player': user_id},
                                          reply_markup=callback_query.message.reply_markup)
         return
 
@@ -123,12 +126,12 @@ def say_answer(update, context, answer):
                                      reply_markup=callback_query.message.reply_markup)
 
 
-def stop(callback_query):
+def stop(callback_query: CallbackQuery):
     callback_query.edit_message_text(GAME_OVER_TEXT % {'stats': game.build_stats()})
     game.stop()
 
 
-def force_stop(update, context):
+def force_stop(update: Update, context: CallbackContext):
     if game.is__idle:
         context.bot.send_message(chat_id=update.effective_chat.id, text=GAME_IS_NOT_PLAYED)
         return
@@ -140,13 +143,15 @@ def force_stop(update, context):
 updater = Updater(token=token, use_context=True)
 dispatcher = updater.dispatcher
 
-dispatcher.add_handler(CommandHandler(START_COMMAND, start))
-dispatcher.add_handler(CommandHandler(CREATE_COMMAND, create))
-dispatcher.add_handler(CommandHandler(STOP_COMMAND, force_stop))
+dispatcher.add_handler(CommandHandler('start', start))
+dispatcher.add_handler(CommandHandler('create', create))
+dispatcher.add_handler(CommandHandler('force_stop', force_stop))
+dispatcher.add_handler(CommandHandler('remove_keyboard', remove_keyboard))
+
 dispatcher.add_handler(CallbackQueryHandler(connect, pattern=REGEX_CONNECT))
 dispatcher.add_handler(CallbackQueryHandler(play, pattern=REGEX_PLAY))
-dispatcher.add_handler(CallbackQueryHandler(believe, pattern=REGEX_BELIEVE))
-dispatcher.add_handler(CallbackQueryHandler(lie, pattern=REGEX_LIE))
+dispatcher.add_handler(CallbackQueryHandler(good, pattern=REGEX_GOOD))
+dispatcher.add_handler(CallbackQueryHandler(bad, pattern=REGEX_BAD))
 
 updater.start_polling()
 updater.idle()
