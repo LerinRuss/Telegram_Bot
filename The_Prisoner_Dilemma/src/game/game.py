@@ -15,6 +15,15 @@ class GameWord(Enum):
     BAD = 2
 
 
+class Player:
+    def __init__(self, name: str):
+        self.name: str = name
+        self.answer: str = None
+
+    def __repr__(self):
+        return f"name is {self.name}, answer is {self.answer}"
+
+
 class Game(StateMachine):
     _idle = State('Idle', initial=True)
     _created = State('Created')
@@ -50,7 +59,7 @@ class Game(StateMachine):
     def clear(self):
         self.room.clear()
 
-    def get_current_by_name(self, player_name: str):
+    def get_current_by_name(self, player_name: str) -> Player | None:
         if self.curr[0].name == player_name:
             return self.curr[0]
 
@@ -59,9 +68,9 @@ class Game(StateMachine):
 
         return None
 
-    def turn(self):
-        first = self.curr[0]
-        second = self.curr[1]
+    def turn(self) -> TurnResult:
+        first: Player = self.curr[0]
+        second: Player = self.curr[1]
 
         if first.answer is None or second.answer is None:
             return TurnResult.keep_turn
@@ -74,7 +83,7 @@ class Game(StateMachine):
         self.curr = self.pairs.pop()
         return TurnResult.next_turn
 
-    def score_points(self, first, second):
+    def score_points(self, first: Player, second: Player):
         if first.answer == GameWord.BAD and second.answer == GameWord.BAD:
             self.room[first.name] = self.room[first.name] + 24
             self.room[second.name] = self.room[second.name] + 24
@@ -91,22 +100,6 @@ class Game(StateMachine):
 
         if second.answer == GameWord.GOOD:
             self.room[second.name] = self.room[second.name] + 120
-
-    def build_stats(self):
-        msg = ''
-        for (name, score) in self.room.items():
-            msg += '%s: %s\n' % (name, score)
-
-        return msg
-
-
-class Player:
-    def __init__(self, name: str):
-        self.name: str = name
-        self.answer: str = None
-
-    def __repr__(self):
-        return f"name is {self.name}, answer is {self.answer}"
 
 
 def pair_up(players_arg: List[str]) -> List[Tuple[Player, Player]]:

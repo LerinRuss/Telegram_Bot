@@ -1,7 +1,9 @@
+from typing import Dict
+
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery, ReplyKeyboardRemove, User
 from telegram.update import Update
-from game.game import Game, TurnResult, GameWord
+from game.game import Game, TurnResult, GameWord, Player
 from localization import *
 
 import logging
@@ -17,6 +19,14 @@ REGEX_BAD = 'testify'
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 token = os.environ['TELEGRAM_BOT_TOKEN']
 game: Game = Game()
+
+
+def _build_stats(room: Dict[str, int]):
+    msg = ''
+    for (name, score) in room.items():
+        msg += '%s: %s\n' % (name, score)
+
+    return msg
 
 
 def remove_keyboard(update: Update, context: CallbackContext):
@@ -104,13 +114,13 @@ def say_answer(update: Update, context: CallbackContext, answer: GameWord):
     callback_query: CallbackQuery = update.callback_query
     callback_query.answer()
     user_id = _get_user_identifier(callback_query.from_user)
-    player = game.get_current_by_name(user_id)
+    player: Player = game.get_current_by_name(user_id)
 
     if player is None or player.answer is not None:
         return
 
     player.answer = answer
-    turn_res = game.turn()
+    turn_res: TurnResult = game.turn()
 
     if turn_res == TurnResult.keep_turn:
         callback_query.edit_message_text(f'{update.callback_query.message.text}\n'
@@ -127,7 +137,7 @@ def say_answer(update: Update, context: CallbackContext, answer: GameWord):
 
 
 def stop(callback_query: CallbackQuery):
-    callback_query.edit_message_text(GAME_OVER_TEXT % {'stats': game.build_stats()})
+    callback_query.edit_message_text(GAME_OVER_TEXT % {'stats': _build_stats(game.room)})
     game.stop()
 
 
@@ -136,7 +146,7 @@ def force_stop(update: Update, context: CallbackContext):
         context.bot.send_message(chat_id=update.effective_chat.id, text=GAME_IS_NOT_PLAYED)
         return
     context.bot.send_message(chat_id=update.effective_chat.id,
-                             text=GAME_OVER_TEXT % {'stats': game.build_stats()})
+                             text=GAME_OVER_TEXT % {'stats': _build_stats(game.room)})
     game.stop()
 
 
