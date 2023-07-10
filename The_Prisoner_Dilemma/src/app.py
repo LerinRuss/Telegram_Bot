@@ -64,7 +64,7 @@ def create(update: Update, context: CallbackContext):
     context.bot.send_message(chat_id=update.effective_chat.id, text=CREATE_ROOM_TEXT, reply_markup=keyboard)
 
 
-def get_user_identifier(user: User):
+def _get_user_identifier(user: User):
     username: str = user.username
 
     if username is None:
@@ -81,7 +81,7 @@ def connect(update: Update, context: CallbackContext):
     callback_query = update.callback_query
     callback_query.answer()
 
-    user_id = get_user_identifier(callback_query.from_user)
+    user_id = _get_user_identifier(callback_query.from_user)
 
     if user_id in game.room:
         return
@@ -103,7 +103,7 @@ def bad(update: Update, context: CallbackContext):
 def say_answer(update: Update, context: CallbackContext, answer: GameWord):
     callback_query: CallbackQuery = update.callback_query
     callback_query.answer()
-    user_id = get_user_identifier(callback_query.from_user)
+    user_id = _get_user_identifier(callback_query.from_user)
     player = game.get_current_by_name(user_id)
 
     if player is None or player.answer is not None:

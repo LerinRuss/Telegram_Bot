@@ -50,7 +50,7 @@ class Game(StateMachine):
     def clear(self):
         self.room.clear()
 
-    def get_current_by_name(self, player_name):
+    def get_current_by_name(self, player_name: str):
         if self.curr[0].name == player_name:
             return self.curr[0]
 
@@ -101,19 +101,19 @@ class Game(StateMachine):
 
 
 class Player:
-    def __init__(self, name):
-        self.name = name
-        self.answer = None
+    def __init__(self, name: str):
+        self.name: str = name
+        self.answer: str = None
 
     def __repr__(self):
-        return self.name
+        return f"name is {self.name}, answer is {self.answer}"
 
 
-def pair_up(players_arg: List[str]):
+def pair_up(players_arg: List[str]) -> List[Tuple[Player, Player]]:
     players: List[str] = players_arg.copy()
     pairs: List[Tuple[Player, Player]] = list()
     while players:
-        last = players.pop()
+        last: str = players.pop()
 
         for curr in players:
             pairs.append((Player(last), Player(curr)))
