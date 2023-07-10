@@ -46,7 +46,7 @@ class Game(StateMachine):
     def play(self):
         self.pairs: List[Tuple[Player, Player]] = pair_up(list(self.room))
         random.shuffle(self.pairs)
-        self.curr: Tuple[Player, Player] = self.pairs.pop()
+        self.curr = self.pairs.pop()
         self._play()
 
     def join(self, player_name: str):
