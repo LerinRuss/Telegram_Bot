@@ -1,7 +1,8 @@
-from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext
+from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext, Dispatcher
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery, ReplyKeyboardRemove, User
 from telegram.update import Update
 from game.game import Game, TurnResult, GameWord
+import game_factory
 from localization import *
 
 import logging
@@ -16,11 +17,6 @@ REGEX_BAD = 'testify'
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 token = os.environ['TELEGRAM_BOT_TOKEN']
-game: Game = Game()
-
-
-def remove_keyboard(update: Update, context: CallbackContext):
-    context.bot.send_message(chat_id=update.effective_chat.id, reply_markup=ReplyKeyboardRemove(selective=True))
 
 
 def start(update: Update, context: CallbackContext):
@@ -28,6 +24,8 @@ def start(update: Update, context: CallbackContext):
 
 
 def play(update: Update, context: CallbackContext):
+    game: Game = game_factory.obtain_game()
+
     if not game.is__created:
         context.bot.send_message(chat_id=update.effective_chat.id, text=CREATE_ROOM_WARN_TEXT)
         return
@@ -52,6 +50,8 @@ def play(update: Update, context: CallbackContext):
 
 
 def create(update: Update, context: CallbackContext):
+    game: Game = game_factory.obtain_game()
+
     if not game.is__idle:
         context.bot.send_message(chat_id=update.effective_chat.id, text=CREATE_ROOM_ERROR_TEXT)
         return
@@ -64,16 +64,9 @@ def create(update: Update, context: CallbackContext):
     context.bot.send_message(chat_id=update.effective_chat.id, text=CREATE_ROOM_TEXT, reply_markup=keyboard)
 
 
-def get_user_identifier(user: User):
-    username: str = user.username
-
-    if username is None:
-        return user.full_name
-
-    return username
-
-
 def connect(update: Update, context: CallbackContext):
+    game: Game = game_factory.obtain_game()
+
     if not game.is__created:
         context.bot.send_message(chat_id=update.effective_chat.id, text=CONNECT_WARN_TEXT)
         return
@@ -81,7 +74,8 @@ def connect(update: Update, context: CallbackContext):
     callback_query = update.callback_query
     callback_query.answer()
 
-    user_id = get_user_identifier(callback_query.from_user)
+    user = callback_query.from_user
+    user_id = user.username if user.username is not None else user.full_name
 
     if user_id in game.room:
         return
@@ -93,17 +87,20 @@ def connect(update: Update, context: CallbackContext):
 
 
 def good(update: Update, context: CallbackContext):
-    say_answer(update, context, GameWord.GOOD)
+    _say_answer(update, GameWord.GOOD)
 
 
 def bad(update: Update, context: CallbackContext):
-    say_answer(update, context, GameWord.BAD)
+    _say_answer(update, GameWord.BAD)
 
 
-def say_answer(update: Update, context: CallbackContext, answer: GameWord):
+def _say_answer(update: Update, answer: GameWord):
+    game: Game = game_factory.obtain_game()
+
     callback_query: CallbackQuery = update.callback_query
     callback_query.answer()
-    user_id = get_user_identifier(callback_query.from_user)
+    user = callback_query.from_user
+    user_id = user.username if user.username is not None else user.full_name
     player = game.get_current_by_name(user_id)
 
     if player is None or player.answer is not None:
@@ -119,19 +116,23 @@ def say_answer(update: Update, context: CallbackContext, answer: GameWord):
         return
 
     if turn_res == TurnResult.game_ended:
-        stop(callback_query)
+        _stop(callback_query)
         return
 
     callback_query.edit_message_text(SAY_NEXT_PAIR % {'pair': game.curr},
                                      reply_markup=callback_query.message.reply_markup)
 
 
-def stop(callback_query: CallbackQuery):
+def _stop(callback_query: CallbackQuery):
+    game: Game = game_factory.obtain_game()
+
     callback_query.edit_message_text(GAME_OVER_TEXT % {'stats': game.build_stats()})
     game.stop()
 
 
 def force_stop(update: Update, context: CallbackContext):
+    game: Game = game_factory.obtain_game()
+
     if game.is__idle:
         context.bot.send_message(chat_id=update.effective_chat.id, text=GAME_IS_NOT_PLAYED)
         return
@@ -141,12 +142,11 @@ def force_stop(update: Update, context: CallbackContext):
 
 
 updater = Updater(token=token, use_context=True)
-dispatcher = updater.dispatcher
+dispatcher: Dispatcher = updater.dispatcher
 
 dispatcher.add_handler(CommandHandler('start', start))
 dispatcher.add_handler(CommandHandler('create', create))
 dispatcher.add_handler(CommandHandler('force_stop', force_stop))
-dispatcher.add_handler(CommandHandler('remove_keyboard', remove_keyboard))
 
 dispatcher.add_handler(CallbackQueryHandler(connect, pattern=REGEX_CONNECT))
 dispatcher.add_handler(CallbackQueryHandler(play, pattern=REGEX_PLAY))

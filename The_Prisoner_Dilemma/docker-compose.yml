@@ -1,0 +1,8 @@
+services:
+  redis:
+    image: redis
+    container_name: prisoner-redis
+  redis-server:
+    image: redis-server
+    container_name: prisoner-redis
+    command: --save 60 1 --loglevel warning
