@@ -15,6 +15,15 @@ class GameWord(Enum):
     BAD = 2
 
 
+class Player:
+    def __init__(self, name: str):
+        self.name: str = name
+        self.answer: str = None
+
+    def __repr__(self):
+        return f"name is {self.name}, answer is {self.answer}"
+
+
 class Game(StateMachine):
     _idle = State('Idle', initial=True)
     _created = State('Created')
@@ -37,7 +46,7 @@ class Game(StateMachine):
     def play(self):
         self.pairs: List[Tuple[Player, Player]] = pair_up(list(self.room))
         random.shuffle(self.pairs)
-        self.curr: Tuple[Player, Player] = self.pairs.pop()
+        self.curr = self.pairs.pop()
         self._play()
 
     def join(self, player_name: str):
@@ -50,7 +59,7 @@ class Game(StateMachine):
     def clear(self):
         self.room.clear()
 
-    def get_current_by_name(self, player_name):
+    def get_current_by_name(self, player_name: str) -> Player | None:
         if self.curr[0].name == player_name:
             return self.curr[0]
 
@@ -59,9 +68,9 @@ class Game(StateMachine):
 
         return None
 
-    def turn(self):
-        first = self.curr[0]
-        second = self.curr[1]
+    def turn(self) -> TurnResult:
+        first: Player = self.curr[0]
+        second: Player = self.curr[1]
 
         if first.answer is None or second.answer is None:
             return TurnResult.keep_turn
@@ -74,7 +83,7 @@ class Game(StateMachine):
         self.curr = self.pairs.pop()
         return TurnResult.next_turn
 
-    def score_points(self, first, second):
+    def score_points(self, first: Player, second: Player):
         if first.answer == GameWord.BAD and second.answer == GameWord.BAD:
             self.room[first.name] = self.room[first.name] + 24
             self.room[second.name] = self.room[second.name] + 24
@@ -92,28 +101,12 @@ class Game(StateMachine):
         if second.answer == GameWord.GOOD:
             self.room[second.name] = self.room[second.name] + 120
 
-    def build_stats(self):
-        msg = ''
-        for (name, score) in self.room.items():
-            msg += '%s: %s\n' % (name, score)
 
-        return msg
-
-
-class Player:
-    def __init__(self, name):
-        self.name = name
-        self.answer = None
-
-    def __repr__(self):
-        return self.name
-
-
-def pair_up(players_arg: List[str]):
+def pair_up(players_arg: List[str]) -> List[Tuple[Player, Player]]:
     players: List[str] = players_arg.copy()
     pairs: List[Tuple[Player, Player]] = list()
     while players:
-        last = players.pop()
+        last: str = players.pop()
 
         for curr in players:
             pairs.append((Player(last), Player(curr)))
