@@ -133,7 +133,7 @@ def _say_answer(update: Update, answer: GameWord):
                                      reply_markup=callback_query.message.reply_markup)
 
 
-def stop(callback_query: CallbackQuery):
+def _stop(callback_query: CallbackQuery):
     game: Game = game_factory.obtain_game()
 
     callback_query.edit_message_text(GAME_OVER_TEXT % {'stats': _build_stats(game.room)})
