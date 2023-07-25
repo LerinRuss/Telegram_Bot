@@ -1,6 +1,6 @@
 from statemachine import StateMachine, State
 from enum import Enum
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 import random
 
 
@@ -59,7 +59,7 @@ class Game(StateMachine):
     def clear(self):
         self.room.clear()
 
-    def get_current_by_name(self, player_name: str) -> Player | None:
+    def get_current_by_name(self, player_name: str) -> Union[Player, None]:
         if self.curr[0].name == player_name:
             return self.curr[0]
 

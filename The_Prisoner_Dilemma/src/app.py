@@ -34,7 +34,7 @@ def start(update: Update, context: CallbackContext):
 
 
 def play(update: Update, context: CallbackContext):
-    game: Game = game_factory.obtain_game()
+    game: Game = game_factory.obtain_game(update.effective_chat.id)
 
     if not game.is__created:
         context.bot.send_message(chat_id=update.effective_chat.id, text=CREATE_ROOM_WARN_TEXT)
@@ -60,7 +60,7 @@ def play(update: Update, context: CallbackContext):
 
 
 def create(update: Update, context: CallbackContext):
-    game: Game = game_factory.obtain_game()
+    game: Game = game_factory.obtain_game(update.effective_chat.id)
 
     if not game.is__idle:
         context.bot.send_message(chat_id=update.effective_chat.id, text=CREATE_ROOM_ERROR_TEXT)
@@ -75,7 +75,7 @@ def create(update: Update, context: CallbackContext):
 
 
 def connect(update: Update, context: CallbackContext):
-    game: Game = game_factory.obtain_game()
+    game: Game = game_factory.obtain_game(update.effective_chat.id)
 
     if not game.is__created:
         context.bot.send_message(chat_id=update.effective_chat.id, text=CONNECT_WARN_TEXT)
@@ -105,7 +105,7 @@ def bad(update: Update, context: CallbackContext):
 
 
 def _say_answer(update: Update, answer: GameWord):
-    game: Game = game_factory.obtain_game()
+    game: Game = game_factory.obtain_game(update.effective_chat.id)
 
     callback_query: CallbackQuery = update.callback_query
     callback_query.answer()
@@ -134,14 +134,14 @@ def _say_answer(update: Update, answer: GameWord):
 
 
 def _stop(callback_query: CallbackQuery):
-    game: Game = game_factory.obtain_game()
+    game: Game = game_factory.obtain_game(update.effective_chat.id)
 
     callback_query.edit_message_text(GAME_OVER_TEXT % {'stats': _build_stats(game.room)})
     game.stop()
 
 
 def force_stop(update: Update, context: CallbackContext):
-    game: Game = game_factory.obtain_game()
+    game: Game = game_factory.obtain_game(update.effective_chat.id)
 
     if game.is__idle:
         context.bot.send_message(chat_id=update.effective_chat.id, text=GAME_IS_NOT_PLAYED)
