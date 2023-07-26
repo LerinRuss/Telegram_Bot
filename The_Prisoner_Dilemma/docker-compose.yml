@@ -2,6 +2,8 @@ services:
   redis:
     image: redis
     container_name: prisoner-redis
+    ports:
+      - "6379:6379"
   redis-server:
     image: redis-server
     container_name: prisoner-redis
