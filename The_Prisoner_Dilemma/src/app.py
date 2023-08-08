@@ -1,10 +1,10 @@
 from typing import Dict
 
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext, Dispatcher
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery, ReplyKeyboardRemove, User
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from telegram.update import Update
-from game.game import Game, TurnResult, GameWord, Player
-import game_factory
+from game import Game, TurnResult, GameWord, Player
+from game_dao import GameFactory
 from localization import *
 
 import logging
@@ -19,6 +19,9 @@ REGEX_BAD = 'testify'
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 token = os.environ['TELEGRAM_BOT_TOKEN']
+
+
+game_factory = GameFactory()
 
 
 def _build_stats(room: Dict[str, int]):
@@ -126,14 +129,14 @@ def _say_answer(update: Update, answer: GameWord):
         return
 
     if turn_res == TurnResult.game_ended:
-        _stop(callback_query)
+        _stop(update, callback_query)
         return
 
     callback_query.edit_message_text(SAY_NEXT_PAIR % {'pair': game.curr},
                                      reply_markup=callback_query.message.reply_markup)
 
 
-def _stop(callback_query: CallbackQuery):
+def _stop(update: Update, callback_query: CallbackQuery):
     game: Game = game_factory.obtain_game(update.effective_chat.id)
 
     callback_query.edit_message_text(GAME_OVER_TEXT % {'stats': _build_stats(game.room)})

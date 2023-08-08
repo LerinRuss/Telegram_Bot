@@ -2,6 +2,7 @@ from statemachine import StateMachine, State
 from enum import Enum
 from typing import Dict, List, Tuple, Union
 import random
+import copy
 
 
 class TurnResult(Enum):
@@ -16,28 +17,39 @@ class GameWord(Enum):
 
 
 class Player:
-    def __init__(self, name: str):
+    def __init__(self, name: str, answer: Union[str, None] = None):
         self.name: str = name
-        self.answer: str = None
+        self.answer: Union[str, None] = answer
 
     def __repr__(self):
         return f"name is {self.name}, answer is {self.answer}"
 
 
 class Game(StateMachine):
-    _idle = State('Idle', initial=True)
-    _created = State('Created')
-    _playing = State('Playing')
+    IDLE = State('Idle', initial=True)
+    CREATED = State('Created')
+    PLAYING = State('Playing')
 
-    _create = _idle.to(_created)
-    _play = _created.to(_playing)
-    _stop = _created.to(_idle) | _playing.to(_idle)
+    _create = IDLE.to(CREATED)
+    _play = CREATED.to(PLAYING)
+    _stop = CREATED.to(IDLE) | PLAYING.to(IDLE)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self,
+                 room: Union[Dict[str, int], None] = None,
+                 pairs: List[Tuple[Player, Player]] = None,
+                 curr: Union[Tuple[Player, Player], None] = None,
+                 *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.room: Dict[str, int] = dict()
-        self.pairs: List = list()
-        self.curr = None
+
+        if room is None:
+            room = dict()
+
+        if pairs is None:
+            pairs = list()
+
+        self.room: Dict[str, int] = copy.deepcopy(room)
+        self.pairs: List[Tuple[Player, Player]] = copy.deepcopy(pairs)
+        self.curr: Union[Tuple[Player, Player], None] = curr
 
     def create_room(self):
         self.clear()
@@ -46,7 +58,7 @@ class Game(StateMachine):
     def play(self):
         self.pairs: List[Tuple[Player, Player]] = pair_up(list(self.room))
         random.shuffle(self.pairs)
-        self.curr = self.pairs.pop()
+        self.curr: Union[Tuple[Player, Player], None] = self.pairs.pop()
         self._play()
 
     def join(self, player_name: str):
