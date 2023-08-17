@@ -29,7 +29,7 @@ class RedisGameMapper:
 
         return game
 
-    def map_to_redis(self, game) -> RedisGame:
+    def map_to_redis(self, game: Game) -> RedisGame:
         redis_pairs = [
             (self._map_game_player_to_redis_player(pair[0]), self._map_game_player_to_redis_player(pair[1]))
             for pair in game.pairs]
@@ -41,7 +41,7 @@ class RedisGameMapper:
         return RedisGame(
             current_state_value=game.current_state_value,
             room=game.room,
-            redis_pairs=redis_pairs,
+            pairs=redis_pairs,
             curr=curr)
 
     def _map_redis_player_to_game_player(self, redis_player: RedisPlayer) -> Player:
@@ -54,16 +54,26 @@ class RedisGameMapper:
 class GameFactory:
     def __init__(self, mapper: RedisGameMapper = RedisGameMapper()):
         self._mapper: RedisGameMapper = mapper
+        self._games: Dict[int, Game] = dict()
 
     def obtain_game(self, id: int) -> Game:
+        game = self._games.get(id)
+
+        if game is not None:
+            return game
+
         try:
             redis_game = RedisGame.get(id)
+            game = self._mapper.map_to_game(redis_game)
+            self._games[id] = game
 
-            return self._mapper.map_to_game(redis_game)
+            return game
         except NotFoundError:
             game = Game()
             redis_game = self._mapper.map_to_redis(game)
             redis_game.pk = id
             redis_game.save()
+
+            self._games[id] = game
 
             return game

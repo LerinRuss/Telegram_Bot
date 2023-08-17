@@ -1,6 +1,6 @@
 from typing import Dict
 
-from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext, Dispatcher
+from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext, Dispatcher, ApplicationBuilder
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from telegram.update import Update
 from game import Game, TurnResult, GameWord, Player
@@ -39,7 +39,7 @@ def start(update: Update, context: CallbackContext):
 def play(update: Update, context: CallbackContext):
     game: Game = game_factory.obtain_game(update.effective_chat.id)
 
-    if not game.is__created:
+    if game.current_state is not Game.CREATED:
         context.bot.send_message(chat_id=update.effective_chat.id, text=CREATE_ROOM_WARN_TEXT)
         return
 
@@ -65,7 +65,7 @@ def play(update: Update, context: CallbackContext):
 def create(update: Update, context: CallbackContext):
     game: Game = game_factory.obtain_game(update.effective_chat.id)
 
-    if not game.is__idle:
+    if game.current_state is not Game.IDLE:
         context.bot.send_message(chat_id=update.effective_chat.id, text=CREATE_ROOM_ERROR_TEXT)
         return
 
@@ -80,7 +80,7 @@ def create(update: Update, context: CallbackContext):
 def connect(update: Update, context: CallbackContext):
     game: Game = game_factory.obtain_game(update.effective_chat.id)
 
-    if not game.is__created:
+    if game.current_state is not Game.CREATED:
         context.bot.send_message(chat_id=update.effective_chat.id, text=CONNECT_WARN_TEXT)
         return
 
@@ -146,7 +146,7 @@ def _stop(update: Update, callback_query: CallbackQuery):
 def force_stop(update: Update, context: CallbackContext):
     game: Game = game_factory.obtain_game(update.effective_chat.id)
 
-    if game.is__idle:
+    if game.current_state is Game.IDLE:
         context.bot.send_message(chat_id=update.effective_chat.id, text=GAME_IS_NOT_PLAYED)
         return
     context.bot.send_message(chat_id=update.effective_chat.id,
@@ -154,17 +154,16 @@ def force_stop(update: Update, context: CallbackContext):
     game.stop()
 
 
-updater = Updater(token=token, use_context=True)
-dispatcher: Dispatcher = updater.dispatcher
+if __name__ == '__main__':
+    application = ApplicationBuilder().token(token).build()
 
-dispatcher.add_handler(CommandHandler('start', start))
-dispatcher.add_handler(CommandHandler('create', create))
-dispatcher.add_handler(CommandHandler('force_stop', force_stop))
+    application.add_handler(CommandHandler('start', start))
+    application.add_handler(CommandHandler('create', create))
+    application.add_handler(CommandHandler('force_stop', force_stop))
 
-dispatcher.add_handler(CallbackQueryHandler(connect, pattern=REGEX_CONNECT))
-dispatcher.add_handler(CallbackQueryHandler(play, pattern=REGEX_PLAY))
-dispatcher.add_handler(CallbackQueryHandler(good, pattern=REGEX_GOOD))
-dispatcher.add_handler(CallbackQueryHandler(bad, pattern=REGEX_BAD))
+    application.add_handler(CallbackQueryHandler(connect, pattern=REGEX_CONNECT))
+    application.add_handler(CallbackQueryHandler(play, pattern=REGEX_PLAY))
+    application.add_handler(CallbackQueryHandler(good, pattern=REGEX_GOOD))
+    application.add_handler(CallbackQueryHandler(bad, pattern=REGEX_BAD))
 
-updater.start_polling()
-updater.idle()
+    application.run_polling()
