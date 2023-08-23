@@ -1,7 +1,7 @@
 from typing import Union, Dict, List, Tuple
 
 from redis_om import JsonModel, EmbeddedJsonModel, NotFoundError
-from game import Game, Player
+from .game import Game, Player
 
 
 class RedisPlayer(EmbeddedJsonModel):
@@ -51,29 +51,23 @@ class RedisGameMapper:
         return RedisPlayer(name=player.name, answer=player.answer)
 
 
-class GameFactory:
+class GameDao:
     def __init__(self, mapper: RedisGameMapper = RedisGameMapper()):
         self._mapper: RedisGameMapper = mapper
-        self._games: Dict[int, Game] = dict()
 
-    def obtain_game(self, id: int) -> Game:
-        game = self._games.get(id)
-
-        if game is not None:
-            return game
-
+    def get_or_create(self, id: int) -> Game:
         try:
             redis_game = RedisGame.get(id)
             game = self._mapper.map_to_game(redis_game)
-            self._games[id] = game
 
             return game
         except NotFoundError:
             game = Game()
-            redis_game = self._mapper.map_to_redis(game)
-            redis_game.pk = id
-            redis_game.save()
-
-            self._games[id] = game
+            self.save(game, id)
 
             return game
+
+    def save(self, game: Game, id: int):
+        redis_game = self._mapper.map_to_redis(game)
+        redis_game.pk = id
+        redis_game.save()
