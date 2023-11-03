@@ -10,6 +10,9 @@ class RedisPlayer(EmbeddedJsonModel):
 
 
 class RedisGame(JsonModel):
+    class Meta:
+        model_key_prefix = 'prisoner-dilemma-bot'
+
     current_state_value: str
     room: Union[Dict[str, int], None]
     pairs: List[Tuple[RedisPlayer, RedisPlayer]]
@@ -70,4 +73,6 @@ class GameDao:
     def save(self, game: Game, id: int):
         redis_game = self._mapper.map_to_redis(game)
         redis_game.pk = id
+        four_hours_in_seconds = 14_400
+        redis_game.expire(four_hours_in_seconds)
         redis_game.save()
