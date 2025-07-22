@@ -1,41 +1,44 @@
 from telegram import Update, ForceReply
-from telegram.ext import Updater, CommandHandler, CallbackContext, MessageHandler, Filters
+from telegram.ext import Application, ApplicationBuilder, CommandHandler, CallbackContext, MessageHandler, filters
+from google import genai
+from google.genai import types
 import os
 import logging
+
+# TODO to separate class
+client = genai.Client(api_key=os.environ['GEMINI_API_KEY'])
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 logger = logging.getLogger(__name__)
 
-
-def start(update: Update, context: CallbackContext) -> None:
+async def start(update: Update, context: CallbackContext) -> None:
     """Send a message when the command is issued."""
     user = update.effective_user
-    update.message.reply_markdown_v2(fr'Hi {user.mention_markdown_v2()}\!',
-                                     reply_markup=ForceReply(selective=True))
+    await update.message.reply_markdown_v2(fr'Hi {user.mention_markdown_v2()}\!')
 
 
-def help_command(update: Update, context: CallbackContext) -> None:
+async def help_command(update: Update, context: CallbackContext) -> None:
     """Send a help message"""
-    update.message.reply_text('Help!')
+    await update.message.reply_text('This bot writes diminutives of the word you will write')
 
 
-def echo(update: Update, context: CallbackContext) -> None:
-    """Echo the user message."""
-    update.message.reply_text(update.message.text)
+async def echo(update: Update, context: CallbackContext) -> None:
+    sent_text = f"Result only of popular diminutives of a word {update.message.text} with corresponding meanings"
+    response: types.GenerateContentResponse = client.models.generate_content(
+        model='gemini-2.5-flash-preview-04-17-thinking', contents=sent_text)
+    await update.message.reply_text(response.text)
 
 
 def main():
-    updater = Updater(token=os.environ['TELEGRAM_BOT_TOKEN'])
-    dispatcher = updater.dispatcher
+    app: Application = ApplicationBuilder().token(token=os.environ['TELEGRAM_BOT_TOKEN']).build()
 
-    dispatcher.add_handler(CommandHandler('start', start))
-    dispatcher.add_handler(CommandHandler('help', help_command))
-    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, echo))
+    app.add_handler(CommandHandler('start', start))
+    app.add_handler(CommandHandler('help', help_command))
+    app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), echo))
 
-    updater.start_polling()
-    updater.idle()
+    app.run_polling()
 
 
 if __name__ == '__main__':
